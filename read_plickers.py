@@ -23,7 +23,6 @@ def get_contours_topology(image):
     ced_image = cv2.Canny(blurred, 50, 180)
     cv2.imshow('canny', ced_image)
     _, thresh = cv2.threshold(gray, 160, 255, 1)
-    cv2.imshow('shade of gray', thresh)
     contours, hierarchy = cv2.findContours(ced_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     return contours, hierarchy, gray
 
