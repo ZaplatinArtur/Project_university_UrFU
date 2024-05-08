@@ -22,7 +22,6 @@ def get_contours_topology(image):
     blurred = cv2.GaussianBlur(gray, (3, 3), 1000)
     ced_image = cv2.Canny(blurred, 50, 180)
     cv2.imshow('canny', ced_image)
-    _, thresh = cv2.threshold(gray, 160, 255, 1)
     contours, hierarchy = cv2.findContours(ced_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     return contours, hierarchy, gray
 
@@ -92,8 +91,8 @@ def extract_identifier(im_gray, box, image_display, group=CLASS_TEST):
         if CATALOGUE.get(int_ret):
             rang_stud = CATALOGUE.get(int_ret)[0] - 1
             if rang_stud < len(group):
-                text = CATALOGUE.get(int_ret)[1]
-                cv2.putText(image_display, text, anchor, cv2.FONT_HERSHEY_SIMPLEX, 3.0, (0, 0, 255))
+                text = 'done'
+                cv2.putText(image_display, text, anchor, cv2.FONT_HERSHEY_SIMPLEX, 3.0, (0, 0, 255), 8)
     else:
         int_ret = 0
     return int_ret
