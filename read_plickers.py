@@ -17,21 +17,39 @@ def get_contours_topology(image):
      - их топология (дерево включений)
      - изображение преобразовано в уровень серого
     """
+
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    blurred = cv2.blur(gray, (3, 3))
+    blurred = cv2.GaussianBlur(gray, (3, 3), 1000)
     ced_image = cv2.Canny(blurred, 50, 180)
     cv2.imshow('canny', ced_image)
+    _, thresh = cv2.threshold(gray, 160, 255, 1)
+    cv2.imshow('shade of gray', thresh)
     contours, hierarchy = cv2.findContours(ced_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     return contours, hierarchy, gray
 
 
 def edging(contour):
     """
-    Принимает в качестве параметра массив точек и возвращает : массив вершин прямоугольника, наилучшим образом обрамляющий контур.
+    Принимает в качестве параметра массив точек и возвращает
+    массив вершин прямоугольника, наилучшим образом обрамляющий контур.
     """
     rect = cv2.minAreaRect(contour)
     box = cv2.boxPoints(rect)
     box = np.intp(box)
+    angle = rect[-1]
+    if angle < -45:
+        angle += 90
+    elif angle > 45:
+        angle -= 90
+
+    if angle == 0:
+        min_index = np.argmin(box[:, 0])
+    elif angle == 90:
+        min_index = np.argmin(box[:, 1])
+    else:
+        min_index = np.argmin(box[:, 0] + box[:, 1])
+    box = np.roll(box, -min_index, axis=0)
+
     return [box]
 
 
@@ -39,13 +57,11 @@ def extract_identifier(im_gray, box, image_display, group=CLASS_TEST):
     """
      Принимает в качестве параметра изображение в оттенке серого
      и прямоугольник в виде массива вершин, который должен обрамлять карточку.
-     Пишет на отображаемом изображении имя ученика, который должен владеть карточкой.
+     Пишет на отображаемом изображении ответ ученика, который владеет карточкой.
      Возвращает целое число, идентифицирующее карточку.
     """
     str_code = ''
     tops = [tuple(top) for top in box[0]]
-    if tops[3][1] < tops[1][1]:
-        tops = (tops[1], tops[2], tops[3], tops[0])
     x_min = min(tops, key=lambda t: t[0])[0]
     x_max = max(tops, key=lambda t: t[0])[0]
     y_min = min(tops, key=lambda t: t[1])[1]
@@ -53,8 +69,9 @@ def extract_identifier(im_gray, box, image_display, group=CLASS_TEST):
     if x_max > x_min and y_max > y_min:
         zone = im_gray[y_min:y_max, x_min:x_max]
         depart = np.float32(tuple(map(lambda t: (t[0] - x_min, t[1] - y_min), tops[:3])))
-        purpose = np.float32(((0, 200), (0, 0), (200, 0)))
+        purpose = np.float32(((0, 0), (200, 0), (200, 200)))
         mat = cv2.getAffineTransform(depart, purpose)
+
         straightened_area = cv2.warpAffine(zone, mat, (200, 200))
         contrasting_area = cv2.threshold(straightened_area, 80, 255, cv2.THRESH_BINARY)[1]
         difference = 5
@@ -90,7 +107,7 @@ def extract_identifiers(image, group=CLASS_TEST):
     """
     res = []
     contours, hierarchy, im_gray = get_contours_topology(image)
-    #cv2.imshow('shade of gray', im_gray)
+
     for rang, contour in enumerate(contours):
         topology = hierarchy[0][rang]
         if topology[0] == -1 and topology[1] == -1 and topology[2] == -1 and topology[3] != -1:
@@ -111,8 +128,8 @@ def extract_identifiers(image, group=CLASS_TEST):
 def recognizes_cards(image, group=CLASS_TEST):
     if stop_scan:
         return []
-    return [CATALOGUE.get(identifiant) for identifiant in extract_identifiers(image, group) if
-            CATALOGUE.get(identifiant)]
+    return [CATALOGUE.get(identifier) for identifier in extract_identifiers(image, group) if
+            CATALOGUE.get(identifier)]
 
 
 def delete_missing_students(group):
@@ -136,7 +153,7 @@ def delete_missing_students(group):
         window.quit()
         window.destroy()
 
-    window.after(500, delete_missing_students)
+
     button = Tk.Button(window, text="Подтвердить", command=confirm_input)
     button.pack()
     window.mainloop()
@@ -149,7 +166,7 @@ def displaying_remaining_students():
     """Отображает список оставшихся учеников в окне Tkinter"""
     global remaining_students
     displaying_remaining_students = Tk.Tk()
-    displaying_remaining_students.title('Оценка')
+    displaying_remaining_students.title('Нераспознанные ученики')
     card_remaining_stud = Tk.Frame(displaying_remaining_students)
 
     for student in remaining_students:
@@ -208,6 +225,7 @@ def scan_video_stream(group, camera=0):
             print('Результаты:')
             for identification, answer in answers:
                 print(f'Студент: {group[identification - 1]["name"]} {group[identification - 1]["surname"]}, Ответ: {answer}')
+
     print(answers)
 
 
