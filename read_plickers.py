@@ -15,9 +15,8 @@ def get_contours_topology(image):
     Принимает в качестве параметра цветное изображение в формате RGB и возвращает:
      - список обнаруженных контуров
      - их топология (дерево включений)
-     - изображение преобразовано в уровень серого
+     - изображение в серых оттенках
     """
-
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (3, 3), 1000)
     ced_image = cv2.Canny(blurred, 50, 180)
@@ -53,7 +52,7 @@ def edging(contour):
 
 def extract_identifier(im_gray, box, image_display, group=CLASS_TEST):
     """
-     Принимает в качестве параметра изображение в оттенке серого
+     Принимает в качестве параметра изображение в оттенках серого
      и прямоугольник в виде массива вершин, который должен обрамлять карточку.
      Пишет на отображаемом изображении ответ ученика, который владеет карточкой.
      Возвращает целое число, идентифицирующее карточку.
@@ -124,8 +123,8 @@ def extract_identifiers(image, group=CLASS_TEST):
 
 
 def recognizes_cards(image, group=CLASS_TEST):
-    if stop_scan:
-        return []
+    '''if stop_scan:
+        return []'''
     return [CATALOGUE.get(identifier) for identifier in extract_identifiers(image, group) if
             CATALOGUE.get(identifier)]
 
@@ -150,7 +149,6 @@ def delete_missing_students(group):
     def confirm_input():
         window.quit()
         window.destroy()
-
 
     button = Tk.Button(window, text="Подтвердить", command=confirm_input)
     button.pack()
@@ -190,6 +188,24 @@ def displaying_remaining_students():
         window.after(500, updating_list)
     displaying_remaining_students.after(500, updating_list)
     displaying_remaining_students.mainloop()
+
+
+def scan_photo(group, name_photo):
+    '''Сканирует карточки на фото'''
+    global answers, input_field, label_entry_get
+    answers = []
+    label_entry_get['text'] = f'{input_field.get()}'
+    name = str(str(name_photo) + ".jpg")
+    frame = cv2.imread(name, cv2.IMREAD_COLOR)
+    cv2.imshow('gfgfgg', frame)
+    for identification, answer in recognizes_cards(frame, group):
+        if identification <= len(group):
+            answers.append((identification, answer))
+    print('Сканирование завершено')
+    print('Результаты:')
+    for identification, answer in answers:
+        print(f'Студент: {group[identification - 1]["name"]} {group[identification - 1]["surname"]}, Ответ: {answer}')
+    print(answers)
 
 
 def scan_video_stream(group, camera=0):
@@ -239,14 +255,53 @@ def real_time_scanner(group, camera=0, window=None):
     scan_video_stream(group, camera)
 
 
-def main(camera=0):
-    """запускает главное окно программы, которое позволяет
-        выбрать класс и запустить сканирование"""
-    main_window = Tk.Tk()
-    main_window.title("Выбор класса")
-    button_group_1 = Tk.Button(main_window, text="1 класс", command=(lambda: real_time_scanner(CLASS_TEST, camera, main_window)))
+def select_card():
+    global label_entry_get, input_field
+    input_window = Tk.Tk()
+    input_window.title("Введите название фото")
+    input_text = Tk.StringVar()
+    input_field = Tk.Entry(input_window, textvariable=input_text)
+    input_field.pack()
 
+    label_entry_get = Tk.Label(input_window)
+    label_entry_get.pack()
+
+    ok_button = Tk.Button(input_window, text="OK", command=(lambda: scan_photo(CLASS_TEST, input_field.get())))
+    ok_button.pack()
+
+    input_window.mainloop()
+
+
+def select_class_video(group, window=None):
+    """выбрать класс и запустить сканирование"""
+    if window:
+        window.quit()
+        window.destroy()
+    m_window = Tk.Tk()
+    m_window.title("Выбор класса")
+    button_group_1 = Tk.Button(m_window, text="1 класс", command=(lambda: real_time_scanner(group, 0, m_window)))
     button_group_1.pack()
+    m_window.mainloop()
+
+
+def select_class_photo():
+    """выбрать класс и запустить сканирование"""
+    select_card()
+
+
+def main():
+    main_window = Tk.Tk()
+    main_window.title('Выбрать действие')
+    text = Tk.Text(height=5, width= 30, font=('Arial 14', 18))
+    text.pack()
+
+    text.insert("1.0", "Выберите действие:")
+    text.tag_add('title', 1.0)
+    text.tag_config('title', justify='center')
+    button_video = Tk.Button(main_window, text = 'Запустить сканирование с видеопотока', command=lambda: select_class_video(CLASS_TEST, main_window))
+    button_photo = Tk.Button(main_window, text= 'Выбрать фото', command=lambda:select_class_photo())
+    button_video.pack()
+    button_photo.pack()
     main_window.mainloop()
 
 
